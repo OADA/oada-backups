@@ -8,27 +8,25 @@ services:
   # Add ourselves to admin container:
   admin:
     volumes:
-      - ./services-available/backups:/code/backups
-      - arangodb_backups:/backups
+      - ./services-available/oada-backups:/code/oada-backups
+      - oada_backups_volume:/oada-backups
 
 
   ###############################################
   # This service's definition:
   ###############################################
-  backups:
+  oada-backups:
     build:
-      context: ./services-available/backups
-    container_name: backups
+      context: ./services-available/oada-backups
+    container_name: oada-backups
     restart: always
     networks:
       - arango_net
     volumes:
-      - ./services-available/backups/daily:/etc/periodic/daily
-      - ./services-available/backups:/code/backups
-      - arangodb_backups:/backups
-    environment:
-      - ARANGODB_HOSTNAME=${ARANGODB_HOSTNAME:-arangodb}
+      - ./services-available/oada-backups/daily:/etc/periodic/daily
+      - ./services-available/oada-backups:/code/oada-backups
+      - oada_backups_volume:/oada-backups
     command: crond -f -d 8
 
 volumes:
-  arangodb_backups:
+  oada_backups_volume:
