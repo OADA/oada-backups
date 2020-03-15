@@ -1,0 +1,34 @@
+version: "3"
+
+services:
+  ##########################################
+  # Overrides for oada-core services:
+  ##########################################
+
+  # Add ourselves to admin container:
+  admin:
+    volumes:
+      - ./services-available/backups:/code/backups
+      - arangodb_backups:/backups
+
+
+  ###############################################
+  # This service's definition:
+  ###############################################
+  backups:
+    build:
+      context: ./services-available/backups
+    container_name: backups
+    restart: always
+    networks:
+      - arango_net
+    volumes:
+      - ./services-available/backups/daily:/etc/periodic/daily
+      - ./services-available/backups:/code/backups
+      - arangodb_backups:/backups
+    environment:
+      - ARANGODB_HOSTNAME=${ARANGODB_HOSTNAME:-arangodb}
+    command: crond -f -d 8
+
+volumes:
+  arangodb_backups:

@@ -1,0 +1,70 @@
+#!/bin/sh
+
+# 2020.03.14-23:31:03
+NOW=$(date '+%f')
+YEAR=$(date '+%Y')
+MONTH=$(date '+%m')
+DAY=$(date '+%d')
+
+BACKUP_FOLDER=/backups
+
+BACKUP_TMPFOLDER=bk_$YEAR-$MONTH-$DAY
+BACKUPFILE=${BACKUP_TMPFOLDER}.tar.bz2
+
+###################################
+# Create folder for year if not there
+cd $BACKUP_FOLDER
+if [ ! -e $YEAR ]; then mkdir $YEAR; fi
+cd $YEAR
+if [ ! -e $MONTH ]; then mkdir $MONTH; fi
+cd $MONTH
+
+########################################
+# Create today's backup and compress it
+if [ -e $BACKUPFILE ]; then
+  echo "Already backed up today, will replace today's backup with a new one";
+fi
+mkdir "$BACKUP_TMPFOLDER"
+arangodump --output-directory "$BACKUP_TMPFOLDER" --server.endpoint tcp://arangodb:8529 --server.database oada --server.password ""
+tar cjvf $BACKUPFILE $BACKUP_TMPFOLDER
+rm -rf $BACKUP_TMPFOLDER
+
+############################################
+# Delete/rotate old backups
+echo "Starting cleanup of old backup files..."
+cd $BACKUP_FOLDER
+# All years that aren't this year should have 1 backup
+for y in $(ls -1 | sort -r | tail +2); do 
+  # In past years, only the last month gets to keep a backup
+  cd $y
+  for m in $(ls -1 | sort -r | tail +2); do
+    echo "Removing backup folder $y/$m because only the last month in this year gets to keep a backup"
+    rm -rf $m
+  done
+  # Now, look in the last month to keep just the latest backup
+  if [ ! "_$(ls -1)" = "_" ]; then  # make sure we actually have a "last" think in this year folder
+    LAST=$(ls -1 | sort -r | head -1)
+    for d in $(ls -1 $LAST/*.tar.bz2 | sort -r | tail +2); do 
+      echo "Removing backup file $y/$d because, in the last month of that year,  it's not the last backup and there is only one allowed"
+      rm $d
+    done
+  fi
+  cd ..
+done
+# Now, we can do the same thing for just this latest year
+cd $YEAR
+  echo "Cleaning up the current year, $YEAR"
+  for m in $(ls -1 | sort -r | tail +2); do
+    # Now, look in the last month to keep just the latest backup
+    for d in $(ls -1 $m/*.tar.bz2 | sort -r | tail +2); do 
+      echo "Removing backup file $YEAR/$d because it is the current year, but not the current month, it's not the last backup for that month, and there is only one allowed"
+      rm $d
+    done
+  done
+  # And finally, for the current month, we keep the last 7 backups:
+  for d in $(ls -1 $MONTH/*.tar.bz2 | sort -r | tail +7); do
+    echo "Removing backup file $YEAR/$d because it is the current month, but there are 7 newer ones"
+    rm $d
+  done
+cd ..
+echo "Done with cleanup on old backup files"
