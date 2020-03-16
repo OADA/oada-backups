@@ -6,7 +6,7 @@ YEAR=$(date '+%Y')
 MONTH=$(date '+%m')
 DAY=$(date '+%d')
 
-BACKUP_FOLDER=/backups
+BACKUP_FOLDER=/oada-backups
 
 BACKUP_TMPFOLDER=bk_$YEAR-$MONTH-$DAY
 BACKUPFILE=${BACKUP_TMPFOLDER}.tar.bz2
@@ -14,9 +14,15 @@ BACKUPFILE=${BACKUP_TMPFOLDER}.tar.bz2
 ###################################
 # Create folder for year if not there
 cd $BACKUP_FOLDER
-if [ ! -e $YEAR ]; then mkdir $YEAR; fi
+if [ ! -e $YEAR ]; then
+  echo "$YEAR does not exist, creating..."
+  mkdir $YEAR; 
+fi
 cd $YEAR
-if [ ! -e $MONTH ]; then mkdir $MONTH; fi
+if [ ! -e $MONTH ]; then 
+  echo "$MONTH does not exist, creating..."
+  mkdir $MONTH; 
+fi
 cd $MONTH
 
 ########################################
@@ -24,9 +30,13 @@ cd $MONTH
 if [ -e $BACKUPFILE ]; then
   echo "Already backed up today, will replace today's backup with a new one";
 fi
+echo "Creating TMP folder $BACKUP_TMPFOLDER/ to hold files during backup"
 mkdir "$BACKUP_TMPFOLDER"
+echo "Calling arangodump..."
 arangodump --output-directory "$BACKUP_TMPFOLDER" --server.endpoint tcp://arangodb:8529 --server.database oada --server.password ""
+echo "Tar-ing $BACKUP_TMPFOLDER into file $BACKUPFILE"
 tar cjvf $BACKUPFILE $BACKUP_TMPFOLDER
+echo "Removing $BACKUP_TMPFOLDER/ now that we are done with it"
 rm -rf $BACKUP_TMPFOLDER
 
 ############################################
